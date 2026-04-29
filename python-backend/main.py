@@ -24,7 +24,7 @@ from database import (
     add_tapu_record, get_tapu_records, get_tapu_record, delete_tapu_record,
     get_serh_entries, get_serh_entries_grouped
 )
-from excel_export import export_to_excel, export_comparison_to_excel
+from excel_export import export_to_excel, export_comparison_to_excel, ALL_COLUMNS
 
 
 def handle_command(cmd: dict) -> dict:
@@ -82,7 +82,16 @@ def handle_command(cmd: dict) -> dict:
                 return {"error": f"Dosya bulunamadı: {pdf_path}"}
 
             # Parse the PDF
-            parsed = parse_tapu_pdf(pdf_path)
+            try:
+                parsed = parse_tapu_pdf(pdf_path)
+            except Exception as e:
+                return {"error": f"PDF okunamadı: {str(e)}"}
+
+            # Validate if it's actually a readable Tapu document
+            if not parsed.get("tapu_date") and not parsed.get("owner_name") and parsed.get("total_entries", 0) == 0:
+                return {
+                    "error": "Bu PDF dosyasından hiçbir veri çıkarılamadı. Dosyanın şifreli, resim formatında veya geçerli bir Tapu Kaydı belgesi olmadığından emin olun."
+                }
 
             # Save to database
             record = add_tapu_record(
@@ -137,10 +146,18 @@ def handle_command(cmd: dict) -> dict:
             comparison = compare_tapu_records(old_entries, new_entries)
             return {"success": True, "data": comparison}
 
+        # ─── EXPORT COLUMNS ──────────────────────────────
+        elif action == "get_export_columns":
+            return {
+                "success": True,
+                "data": [{"key": c["key"], "label": c["label"]} for c in ALL_COLUMNS]
+            }
+
         # ─── EXPORT EXCEL ────────────────────────────────
         elif action == "export_excel":
             record_id = data.get("record_id")
             output_path = data.get("output_path", "")
+            selected_columns = data.get("selected_columns", None)
 
             record = get_tapu_record(record_id, app_data_dir)
             if not record:
@@ -152,13 +169,14 @@ def handle_command(cmd: dict) -> dict:
             malik = get_malik(record["malik_id"], app_data_dir)
             malik_name = malik["name"] if malik else "Bilinmeyen"
 
-            export_to_excel(grouped, malik_name, record["tapu_date"], output_path)
+            export_to_excel(grouped, malik_name, record["tapu_date"], output_path, selected_columns)
             return {"success": True, "data": {"path": output_path}}
 
         elif action == "export_comparison_excel":
             old_record_id = data.get("old_record_id")
             new_record_id = data.get("new_record_id")
             output_path = data.get("output_path", "")
+            selected_columns = data.get("selected_columns", None)
 
             old_record = get_tapu_record(old_record_id, app_data_dir)
             new_record = get_tapu_record(new_record_id, app_data_dir)
@@ -175,7 +193,7 @@ def handle_command(cmd: dict) -> dict:
             export_comparison_to_excel(
                 comparison, malik_name,
                 old_record["tapu_date"], new_record["tapu_date"],
-                output_path
+                output_path, selected_columns
             )
             return {"success": True, "data": {"path": output_path}}
 

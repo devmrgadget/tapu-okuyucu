@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Modal } from "./ui/Modal";
+import { Input } from "./ui/Input";
+import { Button } from "./ui/Button";
 
 interface AddMalikModalProps {
   isOpen: boolean;
@@ -41,91 +44,43 @@ export default function AddMalikModal({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div style={{ marginBottom: 20 }}>
-          <h2
-            style={{
-              fontSize: 20,
-              fontWeight: 700,
-              color: "var(--text-primary)",
-              marginBottom: 4,
-            }}
-          >
-            ✨ Yeni Malik Ekle
-          </h2>
-          <p style={{ fontSize: 14, color: "var(--text-muted)" }}>
-            Tapu kaydını incelemek istediğiniz kişinin adını girin
-          </p>
-        </div>
+    <Modal isOpen={isOpen} onClose={onClose} title="✨ Yeni Malik Ekle">
+      <p className="text-sm text-[var(--text-muted)] mb-4">
+        Tapu kaydını incelemek istediğiniz kişinin adını girin
+      </p>
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            className="input-field"
+      <form onSubmit={handleSubmit}>
+        <div className="mb-4">
+          <Input
             placeholder="Örn: Mehmet Yılmaz"
             value={name}
             onChange={(e) => {
               setName(e.target.value);
               setError("");
             }}
+            error={error}
             autoFocus
-            style={{ marginBottom: 12 }}
           />
+        </div>
 
-          {error && (
-            <p
-              style={{
-                color: "var(--accent-red)",
-                fontSize: 13,
-                marginBottom: 12,
-              }}
-            >
-              ⚠️ {error}
-            </p>
-          )}
-
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              justifyContent: "flex-end",
-              marginTop: 16,
-            }}
-          >
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={onClose}
-              disabled={loading}
-            >
-              İptal
-            </button>
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? (
-                <>
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: 16,
-                      height: 16,
-                      border: "2px solid rgba(255,255,255,0.3)",
-                      borderTopColor: "white",
-                      borderRadius: "50%",
-                      animation: "spin 0.8s linear infinite",
-                    }}
-                  />
-                  Ekleniyor...
-                </>
-              ) : (
-                <>
-                  <span>➕</span> Malik Ekle
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex gap-3 justify-end mt-4">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
+            İptal
+          </Button>
+          <Button type="submit" variant="primary" disabled={loading}>
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Ekleniyor...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <span>➕</span> Malik Ekle
+              </span>
+            )}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import AddMalikModal from "./components/AddMalikModal";
-import SerhList from "./components/SerhList";
 import ComparisonView from "./components/ComparisonView";
+import ExportColumnsModal from "./components/ExportColumnsModal";
+import HomeView from "./components/views/HomeView";
+import MalikDetailView from "./components/views/MalikDetailView";
+import RecordDetailView from "./components/views/RecordDetailView";
 import type {
   Malik,
   TapuRecord,
@@ -61,6 +64,11 @@ async function runPython(action: string, data: Record<string, unknown> = {}) {
   return result;
 }
 
+interface ExportColumn {
+  key: string;
+  label: string;
+}
+
 type View = "home" | "malik-detail" | "record-detail" | "comparison";
 
 export default function Home() {
@@ -79,16 +87,22 @@ export default function Home() {
   const [notification, setNotification] = useState("");
   const [tauriReady, setTauriReady] = useState(false);
 
+  // Export columns modal state
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportColumns, setExportColumns] = useState<ExportColumn[]>([]);
+  const [exportRecordId, setExportRecordId] = useState<number | null>(null);
+  const [isExportingComparison, setIsExportingComparison] = useState(false);
+
   const notify = (msg: string) => {
     setNotification(msg);
-    setTimeout(() => setNotification(""), 3000);
+    setTimeout(() => setNotification(""), 5000);
   };
 
   useEffect(() => {
     loadTauriModules().then(() => {
       const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
       setTauriReady(isTauri ? !!tauriCore : true);
-      
+
       if (tauriCore || !isTauri) {
         runPython("init")
           .then(() => loadMaliks())
@@ -142,6 +156,7 @@ export default function Home() {
 
   const openMalikDetail = async (malik: Malik) => {
     setSelectedMalik(malik);
+    setTapuRecords([]); // Clear old records immediately to prevent flashing
     setView("malik-detail");
     setLoading(true);
     try {
@@ -217,7 +232,35 @@ export default function Home() {
     setLoading(false);
   };
 
-  const handleExportExcel = async (recordId: number) => {
+  // Open export modal with column selection for a specific record
+  const openExportModal = async (recordId: number) => {
+    try {
+      const res = await runPython("get_export_columns");
+      setExportColumns(res.data || []);
+      setExportRecordId(recordId);
+      setIsExportingComparison(false);
+      setShowExportModal(true);
+    } catch {
+      // Fallback: export without column selection
+      handleExportExcel(recordId);
+    }
+  };
+
+  // Open export modal for comparison
+  const openExportComparisonModal = async () => {
+    try {
+      const res = await runPython("get_export_columns");
+      setExportColumns(res.data || []);
+      setExportRecordId(null);
+      setIsExportingComparison(true);
+      setShowExportModal(true);
+    } catch {
+      // Fallback
+      handleExportComparisonLogic();
+    }
+  };
+
+  const handleExportExcel = async (recordId: number, selectedCols?: string[]) => {
     if (!tauriDialog) {
       notify("⚠️ Excel'e dışa aktarma sadece Tauri masaüstü uygulamasında çalışır.");
       return;
@@ -228,10 +271,23 @@ export default function Home() {
     });
     if (!path) return;
     try {
-      await runPython("export_excel", { record_id: recordId, output_path: path });
+      await runPython("export_excel", {
+        record_id: recordId,
+        output_path: path,
+        selected_columns: selectedCols || null,
+      });
       notify("✅ Excel dosyası oluşturuldu");
     } catch (e: unknown) {
       notify(`❌ Hata: ${e instanceof Error ? e.message : "Bilinmeyen hata"}`);
+    }
+  };
+
+  const handleExportWithColumns = (selectedCols: string[]) => {
+    setShowExportModal(false);
+    if (isExportingComparison) {
+      handleExportComparisonLogic(selectedCols);
+    } else if (exportRecordId !== null) {
+      handleExportExcel(exportRecordId, selectedCols);
     }
   };
 
@@ -251,6 +307,34 @@ export default function Home() {
     }
     if (view === "record-detail") setView("malik-detail");
     notify("🗑️ Kayıt silindi");
+  };
+
+  const handleExportComparisonLogic = async (selectedCols?: string[]) => {
+    if (!tauriDialog) {
+      notify("⚠️ Excel'e dışa aktarma sadece Tauri masaüstü uygulamasında çalışır.");
+      return;
+    }
+    const path = await tauriDialog.save({
+      filters: [{ name: "Excel", extensions: ["xlsx"] }],
+      defaultPath: `karsilastirma_${selectedMalik?.name || "rapor"}.xlsx`,
+    });
+    if (!path) return;
+
+    try {
+      const sorted = [...tapuRecords].sort((a, b) => a.tapu_date.localeCompare(b.tapu_date));
+      const oldR = sorted[0];
+      const newR = sorted[sorted.length - 1];
+
+      await runPython("export_comparison_excel", {
+        old_record_id: oldR.id,
+        new_record_id: newR.id,
+        output_path: path,
+        selected_columns: selectedCols || null,
+      });
+      notify("✅ Karşılaştırma Excel dosyası oluşturuldu");
+    } catch (e: unknown) {
+      notify(`❌ Hata: ${e instanceof Error ? e.message : "Bilinmeyen hata"}`);
+    }
   };
 
   const goBack = () => {
@@ -306,115 +390,38 @@ export default function Home() {
       <main style={{ flex: 1, padding: 28, maxWidth: 1200, width: "100%", margin: "0 auto" }}>
         {/* ─── HOME VIEW ───────────────────── */}
         {view === "home" && (
-          <div className="animate-fade-in">
-            <div style={{ marginBottom: 28 }}>
-              <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 6 }}>Malikler</h2>
-              <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Tapu kayıtlarını incelemek için bir malik seçin veya yeni ekleyin</p>
-            </div>
-
-            {maliks.length === 0 ? (
-              <div className="glass-card" style={{ padding: 60, textAlign: "center" }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>👤</div>
-                <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Henüz malik eklenmemiş</h3>
-                <p style={{ color: "var(--text-muted)", marginBottom: 20 }}>Başlamak için yeni bir malik ekleyin</p>
-                <button className="btn-primary" onClick={() => setShowAddModal(true)}>➕ İlk Maliki Ekle</button>
-              </div>
-            ) : (
-              <div className="stagger-children" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
-                {maliks.map((malik) => (
-                  <div key={malik.id} className="glass-card" style={{ padding: 20, cursor: "pointer", position: "relative" }} onClick={() => openMalikDetail(malik)}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: "50%", background: "linear-gradient(135deg, #3b82f6, #8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: "white" }}>
-                        {malik.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <h3 style={{ fontSize: 16, fontWeight: 700 }}>{malik.name}</h3>
-                        <p style={{ fontSize: 12, color: "var(--text-muted)" }}>{malik.record_count || 0} tapu kaydı</p>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                        {new Date(malik.created_at).toLocaleDateString("tr-TR")}
-                      </span>
-                      <button className="btn-danger" style={{ padding: "4px 10px", fontSize: 11 }} onClick={(e) => { e.stopPropagation(); handleDeleteMalik(malik.id, malik.name); }}>
-                        🗑️ Sil
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <HomeView
+            maliks={maliks}
+            setShowAddModal={setShowAddModal}
+            openMalikDetail={openMalikDetail}
+            handleDeleteMalik={handleDeleteMalik}
+          />
         )}
 
         {/* ─── MALIK DETAIL VIEW ──────────── */}
         {view === "malik-detail" && selectedMalik && (
-          <div className="animate-fade-in">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
-              <div>
-                <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>{selectedMalik.name}</h2>
-                <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Tapu kayıtları ve şerh bilgileri</p>
-              </div>
-              <div style={{ display: "flex", gap: 10 }}>
-                {tapuRecords.length >= 2 && (
-                  <button className="btn-secondary" onClick={handleCompare}>🔄 Karşılaştır</button>
-                )}
-                <button className="btn-primary" onClick={handleAddTapuRecord} disabled={loading}>
-                  {loading ? "⏳ Yükleniyor..." : "📄 Tapu Kaydı Ekle"}
-                </button>
-              </div>
-            </div>
-
-            {tapuRecords.length === 0 ? (
-              <div className="glass-card" style={{ padding: 60, textAlign: "center" }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>📄</div>
-                <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Henüz tapu kaydı yok</h3>
-                <p style={{ color: "var(--text-muted)", marginBottom: 20 }}>PDF dosyası yükleyerek tapu kaydı ekleyin</p>
-                <button className="btn-primary" onClick={handleAddTapuRecord}>📄 PDF Yükle</button>
-              </div>
-            ) : (
-              <div className="stagger-children" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {tapuRecords.map((record) => (
-                  <div key={record.id} className="glass-card" style={{ padding: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }} onClick={() => openRecordDetail(record)}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: "var(--radius-sm)", background: "rgba(59, 130, 246, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📜</div>
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 600 }}>Tapu Kaydı - {record.tapu_date}</div>
-                        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{record.total_entries} şerh kaydı</div>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <button className="btn-success" style={{ padding: "6px 12px", fontSize: 12 }} onClick={(e) => { e.stopPropagation(); handleExportExcel(record.id); }}>📊 Excel</button>
-                      <button className="btn-danger" style={{ padding: "6px 12px", fontSize: 12 }} onClick={(e) => { e.stopPropagation(); handleDeleteRecord(record.id); }}>🗑️</button>
-                      <span style={{ color: "var(--text-muted)", fontSize: 18 }}>→</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <MalikDetailView
+            selectedMalik={selectedMalik}
+            tapuRecords={tapuRecords}
+            loading={loading}
+            handleCompare={handleCompare}
+            handleAddTapuRecord={handleAddTapuRecord}
+            openRecordDetail={openRecordDetail}
+            openExportModal={openExportModal}
+            handleDeleteRecord={handleDeleteRecord}
+          />
         )}
 
         {/* ─── RECORD DETAIL VIEW ─────────── */}
-        {view === "record-detail" && selectedRecord && (
-          <div className="animate-fade-in">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-              <div>
-                <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Şerh Detayları</h2>
-                <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
-                  {selectedMalik?.name} • Tarih: {selectedRecord.tapu_date}
-                </p>
-              </div>
-              <button className="btn-success" onClick={() => handleExportExcel(selectedRecord.id)}>📊 Excel&apos;e Aktar</button>
-            </div>
-            {loading ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {[1, 2, 3].map((i) => (<div key={i} className="loading-shimmer" style={{ height: 80 }} />))}
-              </div>
-            ) : (
-              <SerhList grouped={serhGrouped} totalEntries={serhEntries.length} />
-            )}
-          </div>
+        {view === "record-detail" && selectedRecord && selectedMalik && (
+          <RecordDetailView
+            selectedMalik={selectedMalik}
+            selectedRecord={selectedRecord}
+            loading={loading}
+            serhGrouped={serhGrouped}
+            serhEntries={serhEntries}
+            openExportModal={openExportModal}
+          />
         )}
 
         {/* ─── COMPARISON VIEW ────────────── */}
@@ -422,9 +429,10 @@ export default function Home() {
           <div className="animate-fade-in">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
               <div>
-                <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Tapu Karşılaştırması</h2>
+                <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Şerh Karşılaştırması</h2>
                 <p style={{ color: "var(--text-muted)", fontSize: 14 }}>{selectedMalik?.name}</p>
               </div>
+              <button className="btn-success" onClick={openExportComparisonModal}>📊 Excel&apos;e Aktar</button>
             </div>
             <ComparisonView comparison={comparison} oldDate={compOldDate} newDate={compNewDate} />
           </div>
@@ -432,6 +440,12 @@ export default function Home() {
       </main>
 
       <AddMalikModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} onAdd={handleAddMalik} />
+      <ExportColumnsModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={handleExportWithColumns}
+        columns={exportColumns}
+      />
     </div>
   );
 }

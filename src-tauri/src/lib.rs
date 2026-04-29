@@ -6,12 +6,12 @@ use std::os::windows::process::CommandExt;
 
 #[tauri::command]
 async fn run_python(app_handle: tauri::AppHandle, script_path: String, payload: String) -> Result<String, String> {
-    // In dev mode, Tauri runs from the src-tauri directory.
-    // In production, scripts should be bundled as resources.
     let base_dir = if cfg!(debug_assertions) {
-        // Development: current_dir is src-tauri/
         std::env::current_dir()
             .map_err(|e| format!("Failed to get current dir: {}", e))?
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| std::env::current_dir().unwrap())
     } else {
         app_handle
             .path()

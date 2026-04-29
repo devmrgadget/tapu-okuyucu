@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import type { ComparisonResult, SerhEntry } from "../lib/python-bridge";
 
 interface ComparisonViewProps {
@@ -117,6 +118,8 @@ function Section({
   entries,
   variant,
   badgeClass,
+  searchQuery,
+  filterType,
 }: {
   title: string;
   emoji: string;
@@ -124,7 +127,29 @@ function Section({
   entries: SerhEntry[];
   variant: string;
   badgeClass: string;
+  searchQuery: string;
+  filterType: string;
 }) {
+  // Apply search
+  const filteredEntries = useMemo(() => {
+    let result = entries;
+    
+    // Apply search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(e => 
+        (e.icra_dairesi || "").toLowerCase().includes(q) ||
+        (e.dosya_no || "").toLowerCase().includes(q) ||
+        (e.alacakli || "").toLowerCase().includes(q) ||
+        (e.bedel || "").toLowerCase().includes(q) ||
+        (e.yevmiye_no || "").toLowerCase().includes(q) ||
+        (e.tarih || "").toLowerCase().includes(q)
+      );
+    }
+    
+    return result;
+  }, [entries, searchQuery]);
+
   return (
     <div style={{ marginBottom: 24 }}>
       <div
@@ -143,12 +168,19 @@ function Section({
           <span style={{ fontSize: 20 }}>{emoji}</span>
           <span style={{ fontSize: 16, fontWeight: 700 }}>{title}</span>
         </div>
-        <span className={`badge ${badgeClass}`} style={{ fontSize: 14, padding: "6px 14px" }}>
-          {count}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {filteredEntries.length !== count && (
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              {filteredEntries.length} / {count}
+            </span>
+          )}
+          <span className={`badge ${badgeClass}`} style={{ fontSize: 14, padding: "6px 14px" }}>
+            {filteredEntries.length}
+          </span>
+        </div>
       </div>
 
-      {entries.length === 0 ? (
+      {filteredEntries.length === 0 ? (
         <div
           style={{
             textAlign: "center",
@@ -157,11 +189,11 @@ function Section({
             fontSize: 14,
           }}
         >
-          Bu kategoride kayıt bulunmuyor
+          {entries.length === 0 ? "Bu kategoride kayıt bulunmuyor" : "Arama kriterlerine uygun kayıt bulunamadı"}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {entries.map((entry, idx) => (
+          {filteredEntries.map((entry, idx) => (
             <EntryRow key={idx} entry={entry} variant={variant} />
           ))}
         </div>
@@ -175,6 +207,42 @@ export default function ComparisonView({
   oldDate,
   newDate,
 }: ComparisonViewProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTypes, setSelectedTypes] = useState<string[] | null>(null);
+
+  // Collect unique types from all entries
+  const allTypes = useMemo(() => {
+    const types = new Set<string>();
+    [...comparison.removed, ...comparison.remaining, ...comparison.added].forEach(e => {
+      if (e.type) types.add(e.type);
+    });
+    return Array.from(types).sort();
+  }, [comparison]);
+
+  const activeTypes = selectedTypes === null ? allTypes : selectedTypes;
+
+  const toggleType = (t: string) => {
+    if (selectedTypes === null) {
+      setSelectedTypes(allTypes.filter(type => type !== t));
+    } else {
+      if (selectedTypes.includes(t)) {
+        setSelectedTypes(selectedTypes.filter(type => type !== t));
+      } else {
+        setSelectedTypes([...selectedTypes, t]);
+      }
+    }
+  };
+
+  const filterEntries = (entries: SerhEntry[]) => {
+    if (activeTypes.length === 0) return [];
+    if (activeTypes.length === allTypes.length) return entries;
+    return entries.filter(e => e.type && activeTypes.includes(e.type));
+  };
+
+  const filteredRemoved = useMemo(() => filterEntries(comparison.removed), [comparison.removed, activeTypes]);
+  const filteredRemaining = useMemo(() => filterEntries(comparison.remaining), [comparison.remaining, activeTypes]);
+  const filteredAdded = useMemo(() => filterEntries(comparison.added), [comparison.added, activeTypes]);
+
   return (
     <div>
       {/* Summary Cards */}
@@ -198,10 +266,10 @@ export default function ComparisonView({
               marginBottom: 4,
             }}
           >
-            {comparison.removed_count}
+            {filteredRemoved.length}
           </div>
           <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-            ✅ Kaldırılan Haciz
+            ✅ Kaldırılan Şerh
           </div>
         </div>
         <div
@@ -216,10 +284,10 @@ export default function ComparisonView({
               marginBottom: 4,
             }}
           >
-            {comparison.remaining_count}
+            {filteredRemaining.length}
           </div>
           <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-            ⏳ Devam Eden Haciz
+            ⏳ Devam Eden Şerh
           </div>
         </div>
         <div
@@ -234,10 +302,10 @@ export default function ComparisonView({
               marginBottom: 4,
             }}
           >
-            {comparison.added_count}
+            {filteredAdded.length}
           </div>
           <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-            🆕 Yeni Eklenen Haciz
+            🆕 Yeni Eklenen Şerh
           </div>
         </div>
       </div>
@@ -249,7 +317,7 @@ export default function ComparisonView({
           alignItems: "center",
           justifyContent: "center",
           gap: 16,
-          marginBottom: 28,
+          marginBottom: 20,
           padding: "12px 0",
         }}
       >
@@ -262,32 +330,115 @@ export default function ComparisonView({
         </span>
       </div>
 
+      {/* Search and Filter Bar */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          marginBottom: 24,
+          padding: "14px 18px",
+          background: "var(--bg-card)",
+          borderRadius: "var(--radius-md)",
+          border: "1px solid var(--border-color)",
+        }}
+      >
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <div style={{ position: "relative", flex: 1 }}>
+            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "var(--text-muted)" }}>🔍</span>
+            <input
+              className="input-field"
+              type="text"
+              placeholder="Arama... (İcra dairesi, dosya no, alacaklı, bedel)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ paddingLeft: 36, fontSize: 13, width: "100%" }}
+            />
+          </div>
+          {(searchQuery || selectedTypes !== null) && (
+            <button
+              className="btn-secondary"
+              style={{ padding: "8px 14px", fontSize: 12, whiteSpace: "nowrap" }}
+              onClick={() => { setSearchQuery(""); setSelectedTypes(null); }}
+            >
+              ✕ Temizle
+            </button>
+          )}
+        </div>
+        
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, color: "var(--text-muted)", marginRight: 8 }}>Şerh Türü:</span>
+          {allTypes.map(t => {
+            const isActive = activeTypes.includes(t);
+            return (
+              <button
+                key={t}
+                onClick={() => toggleType(t)}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: 12,
+                  borderRadius: "20px",
+                  border: `1px solid ${isActive ? "var(--accent-blue)" : "var(--border-color)"}`,
+                  background: isActive ? "rgba(59, 130, 246, 0.1)" : "transparent",
+                  color: isActive ? "var(--accent-blue)" : "var(--text-secondary)",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+              >
+                <div style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: "50%",
+                  border: `1px solid ${isActive ? "var(--accent-blue)" : "var(--border-color)"}`,
+                  background: isActive ? "var(--accent-blue)" : "transparent",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  {isActive && <span style={{ color: "white", fontSize: 10 }}>✓</span>}
+                </div>
+                {t}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Sections */}
       <Section
-        title="Kaldırılan Hacizler"
+        title="Kaldırılan Şerhler"
         emoji="✅"
         count={comparison.removed_count}
-        entries={comparison.removed}
+        entries={filteredRemoved}
         variant="removed"
         badgeClass="badge-green"
+        searchQuery={searchQuery}
+        filterType="all"
       />
 
       <Section
-        title="Devam Eden Hacizler"
+        title="Devam Eden Şerhler"
         emoji="⏳"
         count={comparison.remaining_count}
-        entries={comparison.remaining}
+        entries={filteredRemaining}
         variant="remaining"
         badgeClass="badge-amber"
+        searchQuery={searchQuery}
+        filterType="all"
       />
 
       <Section
-        title="Yeni Eklenen Hacizler"
+        title="Yeni Eklenen Şerhler"
         emoji="🆕"
         count={comparison.added_count}
-        entries={comparison.added}
+        entries={filteredAdded}
         variant="added"
         badgeClass="badge-red"
+        searchQuery={searchQuery}
+        filterType="all"
       />
     </div>
   );
