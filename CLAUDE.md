@@ -109,7 +109,7 @@ This document defines the role and responsibilities of the Claude AI agent for t
 
 ## 7. Communication Guidelines
 
-- **Language:** Communicate in English.
+- **Language:** Communicate in Turkish.
 - **Code Comments:** Write comments in English.
 - **Commit Messages:** Write commit messages in English.
 - **Progress Updates:** Provide concise updates on progress.

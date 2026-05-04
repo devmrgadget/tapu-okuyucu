@@ -2,6 +2,9 @@
 
 import { useState, useMemo } from "react";
 import type { SerhEntry } from "../lib/python-bridge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface SerhListProps {
   grouped: Record<string, SerhEntry[]>;
@@ -98,137 +101,88 @@ export default function SerhList({ grouped, totalEntries }: SerhListProps) {
   return (
     <div>
       {/* Search and Filter Bar */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-          marginBottom: 16,
-          padding: "14px 18px",
-          background: "var(--bg-card)",
-          borderRadius: "var(--radius-md)",
-          border: "1px solid var(--border-color)",
-        }}
-      >
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={{ position: "relative", flex: 1 }}>
-            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "var(--text-muted)" }}>🔍</span>
+      <Card className="p-5 mb-5">
+        <div className="flex items-center" style={{ gap: 12, marginBottom: 12 }}>
+          <div className="relative flex-1">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">🔍</span>
             <input
-              className="input-field"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-full"
+              style={{ paddingLeft: 40 }}
               type="text"
               placeholder="Arama... (İcra dairesi, dosya no, alacaklı, bedel)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ paddingLeft: 36, fontSize: 13, width: "100%" }}
             />
           </div>
           {(searchQuery || selectedTypes !== null) && (
-            <button
-              className="btn-secondary"
-              style={{ padding: "8px 14px", fontSize: 12, whiteSpace: "nowrap" }}
+            <Button
+              variant="secondary"
+              style={{ fontSize: 12, whiteSpace: "nowrap" }}
               onClick={() => { setSearchQuery(""); setSelectedTypes(null); }}
             >
               ✕ Temizle
-            </button>
+            </Button>
           )}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, color: "var(--text-muted)", marginRight: 8 }}>Şerh Türü:</span>
+        <div className="flex items-center flex-wrap" style={{ gap: 10 }}>
+          <span className="text-xs text-muted-foreground" style={{ marginRight: 4 }}>Şerh Türü:</span>
           {allTypes.map(t => {
             const isActive = activeTypes.includes(t);
             return (
               <button
                 key={t}
                 onClick={() => toggleType(t)}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: 12,
-                  borderRadius: "20px",
-                  border: `1px solid ${isActive ? "var(--accent-blue)" : "var(--border-color)"}`,
-                  background: isActive ? "rgba(59, 130, 246, 0.1)" : "transparent",
-                  color: isActive ? "var(--accent-blue)" : "var(--text-secondary)",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6
-                }}
+                className={`flex items-center text-xs border transition-all cursor-pointer ${isActive
+                  ? "border-blue-500 bg-blue-500/10 text-blue-400"
+                  : "border-border bg-transparent text-muted-foreground"
+                  }`}
+                style={{ gap: 8, borderRadius: 9999 }}
               >
-                <div style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: "50%",
-                  border: `1px solid ${isActive ? "var(--accent-blue)" : "var(--border-color)"}`,
-                  background: isActive ? "var(--accent-blue)" : "transparent",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}>
-                  {isActive && <span style={{ color: "white", fontSize: 10 }}>✓</span>}
+                <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${isActive ? "border-blue-500 bg-blue-500" : "border-border bg-transparent"
+                  }`}>
+                  {isActive && <span className="text-white text-[10px]">✓</span>}
                 </div>
                 {t}
               </button>
             );
           })}
         </div>
-      </div>
+      </Card>
 
       {/* Summary header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 20,
-          padding: "14px 20px",
-          background: "rgba(59, 130, 246, 0.08)",
-          borderRadius: "var(--radius-md)",
-          border: "1px solid rgba(59, 130, 246, 0.2)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 20 }}>📋</span>
-          <span style={{ fontSize: 15, fontWeight: 600 }}>
+      <div className="flex items-center justify-between mb-6 px-5 py-4 bg-blue-500/10 rounded-xl border border-blue-500/20">
+        <div className="flex items-center gap-3">
+          <span className="text-xl">📋</span>
+          <span className="text-[15px] font-semibold">
             {filteredTotal !== totalEntries ? `Bulunan: ${filteredTotal} / Toplam: ${totalEntries}` : `Toplam Şerh Sayısı`}
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button
-            className="btn-secondary"
-            style={{ padding: "4px 10px", fontSize: 11 }}
-            onClick={expandAll}
-          >
+        <div className="flex items-center gap-2.5">
+          <Button variant="secondary" style={{ fontSize: 11 }} onClick={expandAll}>
             Tümünü Aç
-          </button>
-          <button
-            className="btn-secondary"
-            style={{ padding: "4px 10px", fontSize: 11 }}
-            onClick={collapseAll}
-          >
+          </Button>
+          <Button variant="secondary" style={{ fontSize: 11 }} onClick={collapseAll}>
             Tümünü Kapat
-          </button>
-          <span className="badge badge-blue" style={{ fontSize: 14, padding: "6px 14px" }}>
+          </Button>
+          <Badge className="ml-1 text-sm px-3 py-1">
             {filteredTotal}
-          </span>
+          </Badge>
         </div>
       </div>
 
       {/* No results */}
       {filteredDairesiKeys.length === 0 && (searchQuery || selectedTypes !== null) && (
-        <div
-          className="glass-card"
-          style={{ padding: 40, textAlign: "center" }}
-        >
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
-          <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
+        <Card className="text-center p-8">
+          <div className="text-3xl mb-3">🔍</div>
+          <p className="text-sm text-muted-foreground">
             Arama kriterlerine uygun şerh bulunamadı
           </p>
-        </div>
+        </Card>
       )}
 
       {/* İcra Dairesi groups */}
-      <div className="stagger-children">
+      <div className="flex flex-col gap-4">
         {filteredDairesiKeys.map((dairesi) => {
           const entries = filteredGrouped[dairesi];
 
@@ -241,57 +195,25 @@ export default function SerhList({ grouped, totalEntries }: SerhListProps) {
           });
 
           return (
-            <div key={dairesi} style={{ marginBottom: 16 }}>
+            <div key={dairesi}>
               {/* İcra Dairesi Header */}
               <div
                 onClick={() => toggleGroup(dairesi)}
-                style={{
-                  cursor: "pointer",
-                  background:
-                    "linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.1))",
-                  border: "1px solid rgba(139, 92, 246, 0.3)",
-                  borderRadius: expandedGroups[dairesi]
-                    ? "var(--radius-md) var(--radius-md) 0 0"
-                    : "var(--radius-md)",
-                  padding: "14px 20px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  transition: "all 0.2s ease",
-                }}
+                className={`cursor-pointer flex items-center justify-between transition-all border border-purple-500/30 bg-gradient-to-br from-purple-500/15 to-blue-500/10 ${expandedGroups[dairesi] ? "rounded-t-xl" : "rounded-xl"
+                  }`}
+                style={{ padding: "16px 20px" }}
               >
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: 10 }}
-                >
-                  <span style={{ fontSize: 18 }}>🏛️</span>
-                  <span
-                    style={{
-                      fontSize: 15,
-                      fontWeight: 700,
-                      color: "var(--text-primary)",
-                    }}
-                  >
+                <div className="flex items-center" style={{ gap: 12 }}>
+                  <span className="text-lg">🏛️</span>
+                  <span className="text-[15px] font-bold text-foreground">
                     {dairesi}
                   </span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span className="badge badge-purple">
-                    {entries.length} şerh
-                  </span>
+                <div className="flex items-center" style={{ gap: 12 }}>
+                  <Badge variant="secondary">{entries.length} şerh</Badge>
                   <span
-                    style={{
-                      transform: expandedGroups[dairesi] ? "rotate(180deg)" : "rotate(0deg)",
-                      transition: "transform 0.2s ease",
-                      fontSize: 12,
-                      color: "var(--text-muted)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: 24,
-                      height: 24,
-                      borderRadius: "50%",
-                      background: "rgba(139, 92, 246, 0.1)",
-                    }}
+                    className={`w-7 h-7 rounded-full bg-purple-500/10 flex items-center justify-center text-xs text-muted-foreground transition-transform duration-200 ${expandedGroups[dairesi] ? "rotate-180" : "rotate-0"
+                      }`}
                   >
                     ▼
                   </span>
@@ -300,166 +222,72 @@ export default function SerhList({ grouped, totalEntries }: SerhListProps) {
 
               {/* Dosya groups */}
               {expandedGroups[dairesi] && (
-                <div
-                  style={{
-                    background: "var(--bg-card)",
-                    border: "1px solid var(--border-color)",
-                    borderTop: "none",
-                    borderRadius: "0 0 var(--radius-md) var(--radius-md)",
-                    overflow: "hidden",
-                  }}
-                >
-                {Object.entries(byDosya).map(
-                  ([dosyaNo, dosyaEntries], dosyaIdx) => (
-                    <div key={dosyaNo}>
-                      {/* Dosya No sub-header */}
-                      <div
-                        style={{
-                          padding: "10px 20px",
-                          background: "rgba(245, 158, 11, 0.06)",
-                          borderBottom: "1px solid var(--border-color)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        <span style={{ fontSize: 13 }}>📁</span>
-                        <span
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: "var(--accent-amber)",
-                          }}
-                        >
-                          Dosya No: {dosyaNo}
-                        </span>
-                        <span
-                          className="badge badge-amber"
-                          style={{ fontSize: 10, marginLeft: "auto" }}
-                        >
-                          {dosyaEntries.length} kayıt
-                        </span>
-                      </div>
-
-                      {/* Entry rows */}
-                      {dosyaEntries.map((entry, entryIdx) => (
-                        <div
-                          key={entryIdx}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr 1fr 1fr",
-                            gap: 12,
-                            padding: "12px 20px",
-                            borderBottom:
-                              entryIdx < dosyaEntries.length - 1
-                                ? "1px solid var(--border-subtle)"
-                                : dosyaIdx <
-                                  Object.keys(byDosya).length - 1
-                                ? "1px solid var(--border-color)"
-                                : "none",
-                            transition: "background 0.2s",
-                          }}
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.background =
-                              "rgba(59, 130, 246, 0.04)")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.background = "transparent")
-                          }
-                        >
-                          <div>
-                            <div
-                              style={{
-                                fontSize: 10,
-                                color: "var(--text-muted)",
-                                marginBottom: 3,
-                                textTransform: "uppercase",
-                                letterSpacing: 0.5,
-                              }}
-                            >
-                              Tür
-                            </div>
-                            <span
-                              className={`badge ${
-                                entry.type.includes("htiyati")
-                                  ? "badge-amber"
-                                  : "badge-red"
-                              }`}
-                              style={{ fontSize: 10 }}
-                            >
-                              {entry.type}
-                            </span>
-                          </div>
-                          <div>
-                            <div
-                              style={{
-                                fontSize: 10,
-                                color: "var(--text-muted)",
-                                marginBottom: 3,
-                                textTransform: "uppercase",
-                                letterSpacing: 0.5,
-                              }}
-                            >
-                              Yevmiye Tarihi
-                            </div>
-                            <span
-                              style={{
-                                fontSize: 13,
-                                color: "var(--text-primary)",
-                              }}
-                            >
-                              {entry.yevmiye_tarih || "-"}
-                            </span>
-                          </div>
-                          <div>
-                            <div
-                              style={{
-                                fontSize: 10,
-                                color: "var(--text-muted)",
-                                marginBottom: 3,
-                                textTransform: "uppercase",
-                                letterSpacing: 0.5,
-                              }}
-                            >
-                              Yevmiye No
-                            </div>
-                            <span
-                              style={{
-                                fontSize: 13,
-                                color: "var(--text-primary)",
-                                fontFamily: "monospace",
-                              }}
-                            >
-                              {entry.yevmiye_no || "-"}
-                            </span>
-                          </div>
-                          <div>
-                            <div
-                              style={{
-                                fontSize: 10,
-                                color: "var(--text-muted)",
-                                marginBottom: 3,
-                                textTransform: "uppercase",
-                                letterSpacing: 0.5,
-                              }}
-                            >
-                              Bedel
-                            </div>
-                            <span
-                              style={{
-                                fontSize: 13,
-                                color: "#f87171",
-                                fontWeight: 600,
-                              }}
-                            >
-                              {entry.bedel ? `${entry.bedel} ₺` : "-"}
-                            </span>
-                          </div>
+                <div className="bg-background border border-border border-t-0 rounded-b-xl overflow-hidden">
+                  {Object.entries(byDosya).map(
+                    ([dosyaNo, dosyaEntries], dosyaIdx) => (
+                      <div key={dosyaNo}>
+                        {/* Dosya No sub-header */}
+                        <div className="bg-amber-500/5 border-b border-border flex items-center" style={{ padding: "12px 20px", gap: 10 }}>
+                          <span className="text-[13px]">📁</span>
+                          <span className="text-[13px] font-semibold text-amber-500">
+                            Dosya No: {dosyaNo}
+                          </span>
+                          <Badge variant="secondary" className="text-[10px] ml-auto">
+                            {dosyaEntries.length} kayıt
+                          </Badge>
                         </div>
-                      ))}
-                    </div>
-                  )
-                )}
+
+                        {/* Entry rows */}
+                        {dosyaEntries.map((entry, entryIdx) => (
+                          <div
+                            key={entryIdx}
+                            className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 transition-colors hover:bg-blue-500/5 ${entryIdx < dosyaEntries.length - 1
+                              ? "border-b border-border/50"
+                              : dosyaIdx < Object.keys(byDosya).length - 1
+                                ? "border-b border-border"
+                                : ""
+                              }`}
+                          >
+                            <div>
+                              <div className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">
+                                Tür
+                              </div>
+                              <Badge
+                                variant={entry.type?.includes("htiyati") ? "secondary" : "destructive"}
+                                className="text-[10px]"
+                              >
+                                {entry.type || "Belirtilmemiş"}
+                              </Badge>
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">
+                                Yevmiye Tarihi
+                              </div>
+                              <span className="text-[13px] text-foreground">
+                                {entry.yevmiye_tarih || "-"}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">
+                                Yevmiye No
+                              </div>
+                              <span className="text-[13px] text-foreground font-mono">
+                                {entry.yevmiye_no || "-"}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">
+                                Bedel
+                              </div>
+                              <span className="text-[13px] font-semibold text-red-400">
+                                {entry.bedel ? `${entry.bedel} ₺` : "-"}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  )}
                 </div>
               )}
             </div>

@@ -2,6 +2,7 @@
 
 import type { Malik, TapuRecord, SerhEntry } from "../../lib/python-bridge";
 import SerhList from "../SerhList";
+import { Button } from "@/components/ui/button";
 
 interface RecordDetailViewProps {
   selectedMalik: Malik;
@@ -21,19 +22,23 @@ export default function RecordDetailView({
   openExportModal,
 }: RecordDetailViewProps) {
   return (
-    <div className="animate-fade-in">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+    <div className="animate-in fade-in duration-300">
+      <div className="flex items-center justify-between flex-wrap" style={{ marginBottom: 32, gap: 16 }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Şerh Detayları</h2>
-          <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
+          <h2 className="text-[22px] font-bold" style={{ marginBottom: 8 }}>Şerh Detayları</h2>
+          <p className="text-sm text-muted-foreground">
             {selectedMalik.name} • Tarih: {selectedRecord.tapu_date}
           </p>
         </div>
-        <button className="btn-success" onClick={() => openExportModal(selectedRecord.id)}>📊 Excel&apos;e Aktar</button>
+        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => openExportModal(selectedRecord.id)}>
+          📊 Excel&apos;e Aktar
+        </Button>
       </div>
       {loading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {[1, 2, 3].map((i) => (<div key={i} className="loading-shimmer" style={{ height: 80 }} />))}
+        <div className="flex flex-col" style={{ gap: 16 }}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="loading-shimmer rounded-xl" style={{ height: 80 }} />
+          ))}
         </div>
       ) : (
         <SerhList grouped={serhGrouped} totalEntries={serhEntries.length} />

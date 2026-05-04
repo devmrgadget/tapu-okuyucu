@@ -215,6 +215,11 @@ def main():
         try:
             cmd = json.loads(line)
             result = handle_command(cmd)
+            
+            # Frontend'deki Promise'in çözülmesi için _request_id'yi cevaba ekliyoruz
+            if "_request_id" in cmd:
+                result["_request_id"] = cmd["_request_id"]
+                
         except json.JSONDecodeError as e:
             result = {"error": f"Invalid JSON: {str(e)}"}
         except Exception as e:

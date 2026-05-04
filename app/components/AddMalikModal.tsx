@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Modal } from "./ui/Modal";
-import { Input } from "./ui/Input";
-import { Button } from "./ui/Button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface AddMalikModalProps {
   isOpen: boolean;
@@ -19,8 +19,6 @@ export default function AddMalikModal({
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,43 +42,48 @@ export default function AddMalikModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="✨ Yeni Malik Ekle">
-      <p className="text-sm text-[var(--text-muted)] mb-4">
-        Tapu kaydını incelemek istediğiniz kişinin adını girin
-      </p>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>✨ Yeni Malik Ekle</DialogTitle>
+          <DialogDescription>
+            Tapu kaydını incelemek istediğiniz kişinin adını girin
+          </DialogDescription>
+        </DialogHeader>
 
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <Input
-            placeholder="Örn: Mehmet Yılmaz"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setError("");
-            }}
-            error={error}
-            autoFocus
-          />
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Input
+              placeholder="Örn: Mehmet Yılmaz"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError("");
+              }}
+              autoFocus
+            />
+            {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+          </div>
 
-        <div className="flex gap-3 justify-end mt-4">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
-            İptal
-          </Button>
-          <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Ekleniyor...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <span>➕</span> Malik Ekle
-              </span>
-            )}
-          </Button>
-        </div>
-      </form>
-    </Modal>
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
+              İptal
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Ekleniyor...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <span>➕</span> Malik Ekle
+                </span>
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

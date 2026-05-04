@@ -2,6 +2,9 @@
 
 import { useState, useMemo } from "react";
 import type { ComparisonResult, SerhEntry } from "../lib/python-bridge";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface ComparisonViewProps {
   comparison: ComparisonResult;
@@ -11,99 +14,52 @@ interface ComparisonViewProps {
 
 function EntryRow({ entry, variant }: { entry: SerhEntry; variant: string }) {
   return (
-    <div
-      className={`status-${variant}`}
-      style={{
-        display: "grid",
-        gridTemplateColumns: "2fr 1.5fr 1fr 1fr 1.5fr 1fr",
-        gap: 8,
-        padding: "10px 16px",
-        marginBottom: 2,
-        borderRadius: "var(--radius-sm)",
-        transition: "background 0.2s",
-      }}
-    >
+    <div className={`status-${variant} grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_1.5fr_1fr_1fr_1.5fr_1fr] transition-colors hover:bg-white/5`} style={{ padding: "16px 20px", gap: 16, marginBottom: 4, borderRadius: 12 }}>
       <div>
-        <div
-          style={{
-            fontSize: 10,
-            color: "var(--text-muted)",
-            marginBottom: 2,
-          }}
-        >
+        <div className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">
           İcra Dairesi
         </div>
-        <span style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 500 }}>
+        <span className="text-xs text-foreground font-medium">
           {entry.icra_dairesi}
         </span>
       </div>
       <div>
-        <div
-          style={{
-            fontSize: 10,
-            color: "var(--text-muted)",
-            marginBottom: 2,
-          }}
-        >
+        <div className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">
           Dosya No
         </div>
-        <span style={{ fontSize: 12, color: "var(--text-primary)", fontFamily: "monospace" }}>
+        <span className="text-xs text-foreground font-mono">
           {entry.dosya_no}
         </span>
       </div>
       <div>
-        <div
-          style={{
-            fontSize: 10,
-            color: "var(--text-muted)",
-            marginBottom: 2,
-          }}
-        >
+        <div className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">
           Tarih
         </div>
-        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+        <span className="text-xs text-muted-foreground">
           {entry.tarih}
         </span>
       </div>
       <div>
-        <div
-          style={{
-            fontSize: 10,
-            color: "var(--text-muted)",
-            marginBottom: 2,
-          }}
-        >
+        <div className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">
           Bedel
         </div>
-        <span style={{ fontSize: 12, color: "#f87171", fontWeight: 600 }}>
+        <span className="text-xs font-semibold text-red-400">
           {entry.bedel ? `${entry.bedel} ₺` : "-"}
         </span>
       </div>
       <div>
-        <div
-          style={{
-            fontSize: 10,
-            color: "var(--text-muted)",
-            marginBottom: 2,
-          }}
-        >
+        <div className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">
           Alacaklı
         </div>
-        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+        <span className="text-xs text-muted-foreground line-clamp-1">
           {entry.alacakli || "-"}
         </span>
       </div>
       <div>
-        <div
-          style={{
-            fontSize: 10,
-            color: "var(--text-muted)",
-            marginBottom: 2,
-          }}
-        >
+        <div className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wide">
           Yevmiye
         </div>
-        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+        <span className="text-xs text-muted-foreground">
           {entry.yevmiye_tarih} / {entry.yevmiye_no}
         </span>
       </div>
@@ -119,7 +75,6 @@ function Section({
   variant,
   badgeClass,
   searchQuery,
-  filterType,
 }: {
   title: string;
   emoji: string;
@@ -133,11 +88,11 @@ function Section({
   // Apply search
   const filteredEntries = useMemo(() => {
     let result = entries;
-    
+
     // Apply search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(e => 
+      result = result.filter(e =>
         (e.icra_dairesi || "").toLowerCase().includes(q) ||
         (e.dosya_no || "").toLowerCase().includes(q) ||
         (e.alacakli || "").toLowerCase().includes(q) ||
@@ -146,53 +101,35 @@ function Section({
         (e.tarih || "").toLowerCase().includes(q)
       );
     }
-    
+
     return result;
   }, [entries, searchQuery]);
 
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 12,
-          padding: "12px 18px",
-          background: "var(--bg-card)",
-          borderRadius: "var(--radius-md)",
-          border: "1px solid var(--border-color)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 20 }}>{emoji}</span>
-          <span style={{ fontSize: 16, fontWeight: 700 }}>{title}</span>
+    <div className="mb-8">
+      <Card className="p-5 flex items-center justify-between mb-4">
+        <div className="flex items-center" style={{ gap: 12 }}>
+          <span className="text-2xl">{emoji}</span>
+          <span className="text-lg font-bold">{title}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="flex items-center" style={{ gap: 10 }}>
           {filteredEntries.length !== count && (
-            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            <span className="text-sm text-muted-foreground">
               {filteredEntries.length} / {count}
             </span>
           )}
-          <span className={`badge ${badgeClass}`} style={{ fontSize: 14, padding: "6px 14px" }}>
+          <Badge variant={badgeClass as any} className="text-[15px] px-4 py-2">
             {filteredEntries.length}
-          </span>
+          </Badge>
         </div>
-      </div>
+      </Card>
 
       {filteredEntries.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: 30,
-            color: "var(--text-muted)",
-            fontSize: 14,
-          }}
-        >
+        <div className="text-center py-10 text-sm text-muted-foreground">
           {entries.length === 0 ? "Bu kategoride kayıt bulunmuyor" : "Arama kriterlerine uygun kayıt bulunamadı"}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div className="flex flex-col gap-2">
           {filteredEntries.map((entry, idx) => (
             <EntryRow key={idx} entry={entry} variant={variant} />
           ))}
@@ -246,166 +183,93 @@ export default function ComparisonView({
   return (
     <div>
       {/* Summary Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
-          gap: 16,
-          marginBottom: 28,
-        }}
-      >
-        <div
-          className="glass-card"
-          style={{ padding: "18px 20px", textAlign: "center" }}
-        >
-          <div
-            style={{
-              fontSize: 32,
-              fontWeight: 800,
-              color: "#34d399",
-              marginBottom: 4,
-            }}
-          >
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        <Card className="p-8 text-center">
+          <div className="text-4xl font-extrabold text-emerald-400 mb-2">
             {filteredRemoved.length}
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+          <div className="text-sm text-muted-foreground">
             ✅ Kaldırılan Şerh
           </div>
-        </div>
-        <div
-          className="glass-card"
-          style={{ padding: "18px 20px", textAlign: "center" }}
-        >
-          <div
-            style={{
-              fontSize: 32,
-              fontWeight: 800,
-              color: "#fbbf24",
-              marginBottom: 4,
-            }}
-          >
+        </Card>
+        <Card className="p-8 text-center">
+          <div className="text-4xl font-extrabold text-amber-400 mb-2">
             {filteredRemaining.length}
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+          <div className="text-sm text-muted-foreground">
             ⏳ Devam Eden Şerh
           </div>
-        </div>
-        <div
-          className="glass-card"
-          style={{ padding: "18px 20px", textAlign: "center" }}
-        >
-          <div
-            style={{
-              fontSize: 32,
-              fontWeight: 800,
-              color: "#f87171",
-              marginBottom: 4,
-            }}
-          >
+        </Card>
+        <Card className="p-8 text-center">
+          <div className="text-4xl font-extrabold text-red-400 mb-2">
             {filteredAdded.length}
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+          <div className="text-sm text-muted-foreground">
             🆕 Yeni Eklenen Şerh
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Date range indicator */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 16,
-          marginBottom: 20,
-          padding: "12px 0",
-        }}
-      >
-        <span className="badge badge-blue" style={{ fontSize: 12, padding: "6px 16px" }}>
+      <div className="flex items-center justify-center gap-5 mb-8 py-4">
+        <Badge variant="default" className="text-[13px] px-4 py-2.5">
           📅 {oldDate}
-        </span>
-        <span style={{ color: "var(--text-muted)", fontSize: 20 }}>→</span>
-        <span className="badge badge-green" style={{ fontSize: 12, padding: "6px 16px" }}>
+        </Badge>
+        <span className="text-2xl text-muted-foreground">→</span>
+        <Badge variant="secondary" className="text-[13px] px-4 py-2.5">
           📅 {newDate}
-        </span>
+        </Badge>
       </div>
 
       {/* Search and Filter Bar */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-          marginBottom: 24,
-          padding: "14px 18px",
-          background: "var(--bg-card)",
-          borderRadius: "var(--radius-md)",
-          border: "1px solid var(--border-color)",
-        }}
-      >
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={{ position: "relative", flex: 1 }}>
-            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: "var(--text-muted)" }}>🔍</span>
+      <Card className="p-5 mb-5">
+        <div className="flex items-center" style={{ gap: 12, marginBottom: 12 }}>
+          <div className="relative flex-1">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">🔍</span>
             <input
-              className="input-field"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-full"
+              style={{ paddingLeft: 40 }}
               type="text"
               placeholder="Arama... (İcra dairesi, dosya no, alacaklı, bedel)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ paddingLeft: 36, fontSize: 13, width: "100%" }}
             />
           </div>
           {(searchQuery || selectedTypes !== null) && (
-            <button
-              className="btn-secondary"
-              style={{ padding: "8px 14px", fontSize: 12, whiteSpace: "nowrap" }}
+            <Button
+              variant="secondary"
+              style={{ fontSize: 12, whiteSpace: "nowrap" }}
               onClick={() => { setSearchQuery(""); setSelectedTypes(null); }}
             >
               ✕ Temizle
-            </button>
+            </Button>
           )}
         </div>
-        
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, color: "var(--text-muted)", marginRight: 8 }}>Şerh Türü:</span>
+
+        <div className="flex items-center flex-wrap" style={{ gap: 10 }}>
+          <span className="text-xs text-muted-foreground" style={{ marginRight: 4 }}>Şerh Türü:</span>
           {allTypes.map(t => {
             const isActive = activeTypes.includes(t);
             return (
               <button
                 key={t}
                 onClick={() => toggleType(t)}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: 12,
-                  borderRadius: "20px",
-                  border: `1px solid ${isActive ? "var(--accent-blue)" : "var(--border-color)"}`,
-                  background: isActive ? "rgba(59, 130, 246, 0.1)" : "transparent",
-                  color: isActive ? "var(--accent-blue)" : "var(--text-secondary)",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6
-                }}
+                className={`flex items-center text-xs border transition-all cursor-pointer ${isActive
+                    ? "border-blue-500 bg-blue-500/10 text-blue-400"
+                    : "border-border bg-transparent text-muted-foreground"
+                  }`}
+                style={{ gap: 8, borderRadius: 9999 }}
               >
-                <div style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: "50%",
-                  border: `1px solid ${isActive ? "var(--accent-blue)" : "var(--border-color)"}`,
-                  background: isActive ? "var(--accent-blue)" : "transparent",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}>
-                  {isActive && <span style={{ color: "white", fontSize: 10 }}>✓</span>}
+                <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${isActive ? "border-blue-500 bg-blue-500" : "border-border bg-transparent"
+                  }`}>
+                  {isActive && <span className="text-white text-[10px]">✓</span>}
                 </div>
                 {t}
               </button>
             );
           })}
         </div>
-      </div>
+      </Card>
 
       {/* Sections */}
       <Section
@@ -414,7 +278,7 @@ export default function ComparisonView({
         count={comparison.removed_count}
         entries={filteredRemoved}
         variant="removed"
-        badgeClass="badge-green"
+        badgeClass="secondary"
         searchQuery={searchQuery}
         filterType="all"
       />
@@ -425,7 +289,7 @@ export default function ComparisonView({
         count={comparison.remaining_count}
         entries={filteredRemaining}
         variant="remaining"
-        badgeClass="badge-amber"
+        badgeClass="secondary"
         searchQuery={searchQuery}
         filterType="all"
       />
@@ -436,7 +300,7 @@ export default function ComparisonView({
         count={comparison.added_count}
         entries={filteredAdded}
         variant="added"
-        badgeClass="badge-red"
+        badgeClass="destructive"
         searchQuery={searchQuery}
         filterType="all"
       />

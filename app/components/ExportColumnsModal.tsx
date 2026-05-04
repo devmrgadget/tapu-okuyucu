@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Modal } from "./ui/Modal";
-import { Button } from "./ui/Button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface ExportColumn {
   key: string;
@@ -67,70 +67,72 @@ export default function ExportColumnsModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="📊 Excel'e Aktar">
-      <p className="text-sm text-[var(--text-muted)] mb-5">
-        Dışa aktarılacak sütunları seçin
-      </p>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>📊 Excel'e Aktar</DialogTitle>
+          <DialogDescription>
+            Dışa aktarılacak sütunları seçin
+          </DialogDescription>
+        </DialogHeader>
 
-      {/* Select all / deselect all */}
-      <div className="flex gap-2 mb-4 items-center">
-        <Button variant="secondary" className="!text-xs !py-1 !px-3" onClick={selectAll}>
-          Tümünü Seç
-        </Button>
-        <Button variant="secondary" className="!text-xs !py-1 !px-3" onClick={deselectAll}>
-          Tümünü Kaldır
-        </Button>
-        <span className="ml-auto text-xs text-[var(--text-muted)]">
-          {selectedKeys.length} / {columns.length} seçili
-        </span>
-      </div>
+        {/* Select all / deselect all */}
+        <div className="flex items-center gap-3 mb-5">
+          <Button size="sm" onClick={selectAll}>
+            Tümünü Seç
+          </Button>
+          <Button variant="secondary" size="sm" onClick={deselectAll}>
+            Tümünü Kaldır
+          </Button>
+          <span className="ml-auto text-xs text-muted-foreground">
+            {selectedKeys.length} / {columns.length} seçili
+          </span>
+        </div>
 
-      {/* Columns list */}
-      <div className="grid grid-cols-2 gap-2 mb-6">
-        {columns.map((col) => {
-          const isSelected = selected[col.key] || false;
-          return (
-            <label
-              key={col.key}
-              className={`flex items-center gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all text-[13px] ${
-                isSelected
-                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-semibold"
-                  : "bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)]"
-              }`}
-            >
-              <div
-                className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 transition-all border-2 ${
-                  isSelected ? "bg-emerald-500 border-emerald-500" : "bg-transparent border-[var(--border-color)]"
-                }`}
+        {/* Columns list */}
+        <div className="grid grid-cols-2 gap-3 mb-7 max-h-[60vh] overflow-y-auto pr-2">
+          {columns.map((col) => {
+            const isSelected = selected[col.key] || false;
+            return (
+              <label
+                key={col.key}
+                className={`flex items-center rounded-xl border cursor-pointer transition-all text-[13px] p-3 gap-3 ${isSelected
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500 font-semibold dark:text-emerald-400"
+                  : "bg-background border-border text-muted-foreground hover:bg-muted/50"
+                  }`}
               >
-                {isSelected && <span className="text-white text-xs font-bold">✓</span>}
-              </div>
-              <input
-                type="checkbox"
-                checked={isSelected}
-                onChange={() => toggleColumn(col.key)}
-                className="hidden"
-              />
-              {col.label}
-            </label>
-          );
-        })}
-      </div>
+                <div
+                  className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 transition-all border-2 ${isSelected ? "bg-emerald-500 border-emerald-500" : "bg-transparent border-border"
+                    }`}
+                >
+                  {isSelected && <span className="text-white text-xs font-bold">✓</span>}
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleColumn(col.key)}
+                  className="hidden"
+                />
+                {col.label}
+              </label>
+            );
+          })}
+        </div>
 
-      {/* Action buttons */}
-      <div className="flex gap-3 justify-end mt-4">
-        <Button variant="secondary" onClick={onClose}>
-          İptal
-        </Button>
-        <Button
-          variant="success"
-          onClick={handleExport}
-          disabled={selectedKeys.length === 0}
-          className={selectedKeys.length === 0 ? "opacity-50 cursor-not-allowed" : ""}
-        >
-          📊 Dışa Aktar ({selectedKeys.length} sütun)
-        </Button>
-      </div>
-    </Modal>
+        {/* Action buttons */}
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="secondary" onClick={onClose}>
+            İptal
+          </Button>
+          <Button
+            onClick={handleExport}
+            disabled={selectedKeys.length === 0}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            📊 Dışa Aktar ({selectedKeys.length} sütun)
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

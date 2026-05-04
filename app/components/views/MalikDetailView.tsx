@@ -1,8 +1,8 @@
 "use client";
 
 import type { Malik, TapuRecord } from "../../lib/python-bridge";
-import { Card } from "../ui/Card";
-import { Button } from "../ui/Button";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface MalikDetailViewProps {
   selectedMalik: Malik;
@@ -26,55 +26,54 @@ export default function MalikDetailView({
   handleDeleteRecord,
 }: MalikDetailViewProps) {
   return (
-    <div className="animate-fade-in">
-      <div className="flex items-center justify-between mb-7">
+    <div className="animate-in fade-in duration-300">
+      <div className="flex items-center justify-between flex-wrap" style={{ marginBottom: 32, gap: 16 }}>
         <div>
-          <h2 className="text-2xl font-bold mb-1">{selectedMalik.name}</h2>
-          <p className="text-sm text-[var(--text-muted)]">Tapu kayıtları ve şerh bilgileri</p>
+          <h2 className="text-2xl font-bold" style={{ marginBottom: 8 }}>{selectedMalik.name}</h2>
+          <p className="text-sm text-muted-foreground">Tapu kayıtları ve şerh bilgileri</p>
         </div>
-        <div className="flex gap-2.5">
+        <div className="flex" style={{ gap: 12 }}>
           {tapuRecords.length >= 2 && (
             <Button variant="secondary" onClick={handleCompare}>🔄 Karşılaştır</Button>
           )}
-          <Button variant="primary" onClick={handleAddTapuRecord} disabled={loading}>
+          <Button variant="default" onClick={handleAddTapuRecord} disabled={loading}>
             {loading ? "⏳ Yükleniyor..." : "📄 Tapu Kaydı Ekle"}
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col" style={{ gap: 16 }}>
           {[1, 2, 3].map((i) => (
-            <div key={i} className="loading-shimmer h-20 rounded-xl" />
+            <div key={i} className="loading-shimmer rounded-xl" style={{ height: 80 }} />
           ))}
         </div>
       ) : tapuRecords.length === 0 ? (
-        <Card padding="lg" className="text-center">
-          <div className="text-5xl mb-4">📄</div>
-          <h3 className="text-lg font-semibold mb-2">Henüz tapu kaydı yok</h3>
-          <p className="text-[var(--text-muted)] mb-5">PDF dosyası yükleyerek tapu kaydı ekleyin</p>
+        <Card className="p-8 text-center">
+          <div className="text-5xl" style={{ marginBottom: 20 }}>📄</div>
+          <h3 className="text-lg font-semibold" style={{ marginBottom: 12 }}>Henüz tapu kaydı yok</h3>
+          <p className="text-muted-foreground text-sm" style={{ marginBottom: 24 }}>PDF dosyası yükleyerek tapu kaydı ekleyin</p>
           <Button onClick={handleAddTapuRecord}>📄 PDF Yükle</Button>
         </Card>
       ) : (
-        <div className="stagger-children flex flex-col gap-3">
+        <div className="flex flex-col" style={{ gap: 16 }}>
           {tapuRecords.map((record) => (
             <Card
               key={record.id}
-              className="cursor-pointer flex items-center justify-between hover:border-blue-500/30"
-              padding="sm"
+              className="p-5 cursor-pointer flex items-center justify-between hover:border-blue-500/30"
               onClick={() => openRecordDetail(record)}
             >
-              <div className="flex items-center gap-3.5 px-1">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center text-lg">📜</div>
+              <div className="flex items-center" style={{ gap: 16 }}>
+                <div className="rounded-xl bg-blue-500/15 flex items-center justify-center text-xl shrink-0" style={{ width: 44, height: 44 }}>📜</div>
                 <div>
-                  <div className="text-[15px] font-semibold">Tapu Kaydı - {record.tapu_date}</div>
-                  <div className="text-xs text-[var(--text-muted)]">{record.total_entries} şerh kaydı</div>
+                  <div className="text-[15px] font-semibold" style={{ marginBottom: 4 }}>Tapu Kaydı - {record.tapu_date}</div>
+                  <div className="text-xs text-muted-foreground">{record.total_entries} şerh kaydı</div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 pr-1">
+              <div className="flex items-center" style={{ gap: 12 }}>
                 <Button
-                  variant="success"
-                  className="!px-3 !py-1.5 !text-xs"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  style={{ padding: "8px 14px", fontSize: 12 }}
                   onClick={(e) => {
                     e.stopPropagation();
                     openExportModal(record.id);
@@ -83,8 +82,8 @@ export default function MalikDetailView({
                   📊 Excel
                 </Button>
                 <Button
-                  variant="danger"
-                  className="!px-3 !py-1.5 !text-xs"
+                  variant="destructive"
+                  style={{ fontSize: 12 }}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteRecord(record.id);
@@ -92,7 +91,7 @@ export default function MalikDetailView({
                 >
                   🗑️
                 </Button>
-                <span className="text-[var(--text-muted)] text-lg ml-1">→</span>
+                <span className="text-muted-foreground text-lg" style={{ marginLeft: 4 }}>→</span>
               </div>
             </Card>
           ))}

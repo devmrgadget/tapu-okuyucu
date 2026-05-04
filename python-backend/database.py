@@ -11,11 +11,16 @@ from datetime import datetime
 
 
 DB_PATH = None
-
+_last_app_data_dir = None
 
 def get_db_path(app_data_dir: str = None) -> str:
     """Get the database file path."""
-    global DB_PATH
+    global DB_PATH, _last_app_data_dir
+
+    if app_data_dir and app_data_dir != _last_app_data_dir:
+        DB_PATH = None
+        _last_app_data_dir = app_data_dir
+
     if DB_PATH:
         return DB_PATH
 
@@ -23,7 +28,8 @@ def get_db_path(app_data_dir: str = None) -> str:
         os.makedirs(app_data_dir, exist_ok=True)
         DB_PATH = os.path.join(app_data_dir, "tapu_okuyucu.db")
     else:
-        DB_PATH = os.path.join(os.path.dirname(__file__), "tapu_okuyucu.db")
+        base = os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__)
+        DB_PATH = os.path.join(base, "tapu_okuyucu.db")
 
     return DB_PATH
 

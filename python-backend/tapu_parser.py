@@ -123,6 +123,9 @@ def _normalize_icra_dairesi(raw: str) -> str:
     # Standardize numbering: "3 İCRA", "3.İCRA", "3. İCRA" -> "3. İCRA"
     icra_dairesi = re.sub(r'(\d)\.?\s*İCRA', r'\1. İCRA', icra_dairesi)
 
+    # Clean trailing artifacts after DAİRESİ (e.g. malik names that slipped through)
+    icra_dairesi = re.sub(r'(DAİRESİ)\s+.*$', r'\1', icra_dairesi)
+
     return icra_dairesi
 
 

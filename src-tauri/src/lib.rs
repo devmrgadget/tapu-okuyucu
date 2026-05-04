@@ -1,85 +1,60 @@
-use std::process::Command;
+use tauri_plugin_shell::ShellExt;
 use tauri::Manager;
 
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
-
 #[tauri::command]
-async fn run_python(app_handle: tauri::AppHandle, script_path: String, payload: String) -> Result<String, String> {
-    let base_dir = if cfg!(debug_assertions) {
-        std::env::current_dir()
-            .map_err(|e| format!("Failed to get current dir: {}", e))?
-            .parent()
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| std::env::current_dir().unwrap())
-    } else {
-        app_handle
-            .path()
-            .resource_dir()
-            .map_err(|e| format!("Failed to get resource dir: {}", e))?
+async fn run_python(app_handle: tauri::AppHandle, payload: String) -> Result<String, String> {
+    
+    // Uygulamanın AppData klasörünü bul (Veritabanı vb. için gerekiyorsa)
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("App data dir bulunamadı: {}", e))?;
+        
+    let app_data_str = app_data_dir.to_string_lossy().to_string();
+
+    // JSON payload içine app_data_dir enjekte etme (önceki kodundaki mantık)
+    let final_payload = match serde_json::from_str::<serde_json::Value>(&payload) {
+        Ok(mut json_val) => {
+            if let Some(obj) = json_val.as_object_mut() {
+                obj.insert("app_data_dir".to_string(), serde_json::Value::String(app_data_str));
+            }
+            serde_json::to_string(&json_val).unwrap_or(payload.clone())
+        }
+        Err(_) => payload.clone(),
     };
 
-    let script_full = base_dir.join(&script_path);
-    let script_dir = script_full
-        .parent()
-        .map(|p| p.to_path_buf())
-        .unwrap_or_else(|| base_dir.clone());
+    // Tauri Shell eklentisi ile sidecar'ı çağır
+    // "api" ismi tauri.conf.json dosyasındaki externalBin listesinde yazdığımız isimdir.
+    let sidecar_command = app_handle.shell().sidecar("main")
+        .map_err(|e| format!("Sidecar başlatılamadı: {}", e))?;
 
-    let script_str = script_full.to_string_lossy().to_string();
-    let payload_clone = payload.clone();
+    // Argümanı verip asenkron olarak çalıştır ve sonucu bekle
+    let output = sidecar_command
+        .arg(&final_payload)
+        .output()
+        .await
+        .map_err(|e| format!("Python sidecar çalıştırılırken hata oluştu: {}", e))?;
 
-    // Offload the blocking process::Command to a background thread so we
-    // never block the Tauri main / async-runtime thread.
-    let result = tokio::task::spawn_blocking(move || {
-        let mut cmd = Command::new("python");
-        cmd.arg(&script_str)
-            .arg(&payload_clone)
-            .current_dir(&script_dir)
-            .env("PYTHONUTF8", "1")
-            .env("PYTHONIOENCODING", "utf-8");
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
 
-        // Prevent a console window from flashing on Windows
-        #[cfg(windows)]
-        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-
-        let output = cmd.output()
-            .map_err(|e| format!("Failed to execute python: {}", e))?;
-
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-
-        if !output.status.success() {
-            return Err(format!("Python error (exit {}): {}", output.status, stderr));
+    if output.status.success() {
+        if stdout.is_empty() {
+            return Err(format!("Python boş yanıt döndürdü. Stderr: {}", stderr));
         }
-
-        let trimmed = stdout.trim().to_string();
-        if trimmed.is_empty() {
-            return Err(format!("Empty output from python. stderr: {}", stderr));
-        }
-
-        Ok(trimmed)
-    })
-    .await
-    .map_err(|e| format!("Task join error: {}", e))?;
-
-    result
+        Ok(stdout)
+    } else {
+        Err(format!("Python Hatası (Exit {}): {}", output.status.code().unwrap_or(-1), stderr))
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_log::Builder::new().build())
         .invoke_handler(tauri::generate_handler![run_python])
-        .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
-            Ok(())
-        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

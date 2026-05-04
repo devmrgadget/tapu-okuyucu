@@ -13,6 +13,7 @@ import type {
   SerhEntry,
   ComparisonResult,
 } from "./lib/python-bridge";
+import { Button } from "@/components/ui/button";
 
 // Dynamic imports for Tauri APIs (only available in Tauri context)
 let tauriCore: typeof import("@tauri-apps/api/core") | null = null;
@@ -32,36 +33,88 @@ async function loadTauriModules() {
   }
 }
 
-async function runPython(action: string, data: Record<string, unknown> = {}) {
-  const payload = JSON.stringify({ action, data, app_data_dir: null });
+import { Command, Child } from "@tauri-apps/plugin-shell";
 
-  if (!tauriCore) {
-    // Fallback to local HTTP server for web environment
-    try {
-      const response = await fetch("http://localhost:8000", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: payload,
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const result = await response.json();
-      if (result.error) throw new Error(result.error);
-      return result;
-    } catch (e) {
-      throw new Error(
-        "Tauri not available and cannot connect to local HTTP server. " +
-        "Please run 'python python-backend/server.py' to use the web version."
-      );
+let sidecarChild: Child | null = null;
+let responseBuffer = "";
+const pendingRequests = new Map<string, (result: unknown) => void>();
+
+async function getSidecar(): Promise<Child> {
+  if (sidecarChild) return sidecarChild;
+
+  const command = Command.sidecar("bin/api/main");
+
+  // stdout'tan gelen satırları dinle
+  command.stdout.on("data", (line: string) => {
+    responseBuffer += line;
+    const lines = responseBuffer.split("\n");
+    responseBuffer = lines.pop() || "";
+
+    for (const l of lines) {
+      if (!l.trim()) continue;
+      try {
+        const result = JSON.parse(l);
+        const requestId = result._request_id;
+        const handler = pendingRequests.get(requestId);
+        if (handler) {
+          pendingRequests.delete(requestId);
+          handler(result);
+        }
+      } catch (e) {
+        console.error("Parse error:", e);
+      }
     }
-  }
-
-  const raw: string = await tauriCore.invoke("run_python", {
-    scriptPath: "python-backend/main.py",
-    payload,
   });
-  const result = JSON.parse(raw);
-  if (result.error) throw new Error(result.error);
-  return result;
+
+  command.stderr.on("data", (line: string) => {
+    console.error("Sidecar stderr:", line);
+  });
+
+  sidecarChild = await command.spawn();
+  return sidecarChild;
+}
+
+async function getAppDataDir(): Promise<string | null> {
+  try {
+    if (tauriCore) {
+      const { appDataDir } = await import("@tauri-apps/api/path");
+      return await appDataDir();
+    }
+  } catch {
+    console.error("appDataDir alınamadı");
+  }
+  return null;
+}
+
+async function runPython(action: string, data: Record<string, unknown> = {}): Promise<any> {
+  const app_data_dir = await getAppDataDir();
+  const requestId = crypto.randomUUID();
+
+  const payload =
+    JSON.stringify({ action, data, app_data_dir, _request_id: requestId }) +
+    "\n";
+
+  return new Promise(async (resolve, reject) => {
+    const timeout = setTimeout(() => {
+      pendingRequests.delete(requestId);
+      reject(new Error("Sidecar timeout"));
+    }, 30000);
+
+    pendingRequests.set(requestId, (result: unknown) => {
+      clearTimeout(timeout);
+      const r = result as Record<string, unknown>;
+      if (r.error) reject(new Error(r.error as string));
+      else resolve(r);
+    });
+
+    try {
+      const child = await getSidecar();
+      await child.write(payload);
+    } catch (e) {
+      pendingRequests.delete(requestId);
+      reject(e);
+    }
+  });
 }
 
 interface ExportColumn {
@@ -347,47 +400,49 @@ export default function Home() {
 
   if (!tauriReady) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", flexDirection: "column", gap: 16 }}>
-        <div style={{ width: 48, height: 48, border: "3px solid var(--border-color)", borderTopColor: "var(--accent-blue)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Tauri ortamı bekleniyor...</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <div className="w-12 h-12 border-4 border-border border-t-blue-500 rounded-full animate-spin" />
+        <p className="text-sm text-muted-foreground">Tauri ortamı bekleniyor...</p>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div className="min-h-screen flex flex-col">
       {/* Notification */}
       {notification && (
-        <div className="animate-slide-up" style={{ position: "fixed", top: 20, right: 20, zIndex: 100, background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "12px 20px", boxShadow: "var(--shadow-card)", fontSize: 14, maxWidth: 350 }}>
+        <div className="animate-in slide-in-from-bottom-4 fade-in duration-300 fixed top-6 right-6 z-50 bg-card border border-border rounded-xl px-5 py-3.5 shadow-[0_8px_32px_rgba(0,0,0,0.4)] text-sm max-w-[380px]">
           {notification}
         </div>
       )}
 
       {/* Header */}
-      <header style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)", padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <header
+        className="bg-secondary border-b border-border flex items-center justify-between sticky top-0 z-40"
+        style={{ padding: "16px 24px" }}
+      >
+        <div className="flex items-center" style={{ gap: 16 }}>
           {view !== "home" && (
-            <button onClick={goBack} className="btn-secondary" style={{ padding: "8px 14px" }}>
+            <Button variant="secondary" onClick={goBack}>
               ← Geri
-            </button>
+            </Button>
           )}
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, background: "linear-gradient(135deg, #60a5fa, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            <h1 className="text-xl font-extrabold bg-gradient-to-br from-blue-400 to-purple-400 bg-clip-text text-transparent">
               📜 Tapu Okuyucu
             </h1>
-            <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Tapu Kaydı Şerh Analiz Sistemi</p>
+            <p className="text-xs text-muted-foreground" style={{ marginTop: 4 }}>Tapu Kaydı Şerh Analiz Sistemi</p>
           </div>
         </div>
         {view === "home" && (
-          <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+          <Button variant="default" onClick={() => setShowAddModal(true)}>
             ➕ Malik Ekle
-          </button>
+          </Button>
         )}
       </header>
 
       {/* Main content */}
-      <main style={{ flex: 1, padding: 28, maxWidth: 1200, width: "100%", margin: "0 auto" }}>
+      <main className="flex-1 max-w-[1200px] w-full mx-auto" style={{ padding: "32px 24px" }}>
         {/* ─── HOME VIEW ───────────────────── */}
         {view === "home" && (
           <HomeView
@@ -426,13 +481,15 @@ export default function Home() {
 
         {/* ─── COMPARISON VIEW ────────────── */}
         {view === "comparison" && comparison && (
-          <div className="animate-fade-in">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+          <div className="animate-in fade-in duration-300">
+            <div className="flex items-center justify-between flex-wrap" style={{ marginBottom: 32, gap: 16 }}>
               <div>
-                <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Şerh Karşılaştırması</h2>
-                <p style={{ color: "var(--text-muted)", fontSize: 14 }}>{selectedMalik?.name}</p>
+                <h2 className="text-[22px] font-bold" style={{ marginBottom: 8 }}>Şerh Karşılaştırması</h2>
+                <p className="text-sm text-muted-foreground">{selectedMalik?.name}</p>
               </div>
-              <button className="btn-success" onClick={openExportComparisonModal}>📊 Excel&apos;e Aktar</button>
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={openExportComparisonModal}>
+                📊 Excel&apos;e Aktar
+              </Button>
             </div>
             <ComparisonView comparison={comparison} oldDate={compOldDate} newDate={compNewDate} />
           </div>
